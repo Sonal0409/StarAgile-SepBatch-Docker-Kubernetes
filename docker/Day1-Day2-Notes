@@ -1,0 +1,97 @@
+Install docker 
+  # sudo su -
+  1. sudo apt-get update
+  2.  sudo apt-get install ca-certificates curl
+  3.  sudo install -m 0755 -d /etc/apt/keyrings
+  4.  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  5.  sudo chmod a+r /etc/apt/keyrings/docker.asc
+  6.  echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  7.  sudo apt-get update
+ 8.  clear
+ 9.  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+ 
+    10  docker images
+    11  docker pull alpine
+    12  docker images
+    13  docker pull alpine:3.21
+    14  docker images
+    15 docker run -it --name=cont1 alpine 
+you will be on the container terminal 
+Come out of the container and keep the container running 
+
+    press the keys : CTRL pq 
+
+  16 docker attach cont1
+
+Come out of the container and the container is exited 
+
+enter :  exit 
+
+
+17. docker ps -a
+
+COntainer will be exited 
+
+Start the container :
+
+18. docker start cont1
+19. docker rm -f $(docker ps -aq)
+
+20. docker run -d --name=web nginx
+
+21. docker exec -it web bash
+
+exit to come out
+Dockerfile
+
+Dockerfile
+
+- it is a simple text file 
+- the name of this file is dockerfile or Dockerfile 
+- this file is written using docker keywords and arguments
+- this file is version controller in github
+
+Syntax :
+
+keyword argument/command
+
+FROM : 
+with this keyword we will give name of a docker base image name, over which we want to do our customization
+This is the first keyword of the dockerfile 
+RUN : 
+with this keyword we will write commands that are need to install/upgrade/remove packages on the container 
+Using run keyword we can run any command on the container 
+When the container is launched, these command will already be executed and complete 
+COPY :
+Copy a set of files from host machine to container directory
+ADD :
+Copy a set of files from host machine to container directory
+But ADD keyword can also copy tar files on the container 
+ADD keyword can also download files on the container from remote location
+
+CMD :
+Give the final command that will keep running on the container 
+That final that should run on the conatiner can be replaced by a new command given by user at runtime
+
+ENTRYPOINT:
+Give the final command that will keep running on the container 
+That final that should run on the conatiner CANNOT be replaced by a new command given by user at runtime
+The new command will go and append to the final command 
+
+EXPOSE: give the port number were the application will be exposed on the container
+===================================
+
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install nginx -y
+COPY index.html /var/www/html/
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+build dockerfile into an Image
+
+# docker build -t myimage01 .
+
+# docker images
+# docker run -d -t myimage01
