@@ -1,0 +1,211 @@
+Syntax :
+
+keyword argument/command
+
+FROM : 
+with this keyword we will give name of a docker base image name, over which we want to do our customization
+This is the first keyword of the dockerfile 
+RUN : 
+with this keyword we will write commands that are need to install/upgrade/remove packages on the container 
+Using run keyword we can run any command on the container 
+When the container is launched, these command will already be executed and complete 
+COPY :
+Copy a set of files from host machine to container directory
+ADD :
+Copy a set of files from host machine to container directory
+But ADD keyword can also copy tar files on the container 
+ADD keyword can also download files on the container from remote location
+
+CMD :
+Give the final command that will keep running on the container 
+That final that should run on the conatiner can be replaced by a new command given by user at runtime
+
+ENTRYPOINT:
+Give the final command that will keep running on the container 
+That final that should run on the conatiner CANNOT be replaced by a new command given by user at runtime
+The new command will go and append to the final command 
+
+EXPOSE: give the port number were the application will be exposed on the container
+===================================
+
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install nginx -y
+COPY index.html /var/www/html/
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+build dockerfile into an Image
+
+# docker build -t myimage01 .
+
+# docker images
+# docker run -d -t myimage01
+
+Demo2 : Deploy java application of tomcat container:
+
+# git clone https://github.com/Sonal0409/AnsibleDockerdemo.git
+
+# cd AnsibleDockerdemo
+
+# docker build -t myaddressbook .
+
+# docker run -d -P myaddressbook
+
+# docker ps -a 
+
+http://localhost:<port>/addressbook/
+
+
+git clone https://github.com/Sonal0409/Jenkins-python-Docker-demo.git
+
+cd Jenkins-python-Docker-demo
+docker build -t mypythonimage .
+docker images
+docker run -d -P mypythonimage
+docker ps -a
+
+cd
+OR https://github.com/Sonal0409/my-python-project-realtime.git
+
+git clone https://github.com/Sonal0409/nodejsappDockerfile.git
+cd nodejsappDockerfile
+docker build -t mynodeimage .
+docker images
+docker run -d -P mynodeimage
+docker ps -a
+
+
+
+JENKINS CONTAINER
+
+docker run -d --name jenkins -P jenkins/jenkins
+
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+
+
+
+
+/var/lib/docker/volumes/myvol/_data
+
+
+
+DOCKER COMPOSE TOOL
+==============================
+
+•	We have to install docker-compose tool in the docker host machine
+•	Using this tool we will write a muti container architecture file
+•	This file is written in YAML
+•	The name of the file by default is docker-compose.yml
+•	This file will create services - micro services 
+•	Each service is a container 
+•	For each service we will mention, image Name, port details, environment details, network detail, volume details in the YAML
+•	After the save the file, using the compose tool command, we will run the file
+•	Now with single command - all the services(container) will get created in your custom network
+•	Advantage is we don't have to write docker run command for each container
+•	We can VC this file, any team member who will pull and run this compose YAMl file, will always get the same containers.
+•	A compose tool can build a docker image and then run the image to give a container
+
+Install Docker Compose tool
+
+# curl -SL https://github.com/docker/compose/releases/download/v2.38.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+
+# chmod +x /usr/local/bin/docker-compose
+
+
+
+YAML:  YAML aint a markup language OR yet another markup language
+
+It is not a programming language, scripting language
+It is just a way of storing the data like json , xml file
+
+YAML syntax:
+
+key: value 
+
+key is given to you by docker-compose tool
+
+value mostly is given by user
+
+a = 10;
+a= 20number;
+a = [10,30,40,50,60]
+
+a = [b=100, c=200]
+
+A key can store a single value, list of values or again a key and value
+
+Example 1: A key storing a single value
+
+Company: Staragile
+Trainer: Sonal
+Training: Docker
+Time: 08pm
+Day: Weekday
+
+
+EXAMPLE 2: A key storing a list of values
+
+Company: Staragile
+Trainers: 
+	   - Sonal
+	   - trainer1
+	   - trainer2
+Trainings: 
+	- Docker
+	- Kubernetes
+	- Jenkins
+Time: ["8PM","7AM"]
+
+Example 3: A key storing again a key and value (map/dictonary)
+
+Company: Staragile
+Trainers: 
+ 	- name: sonal
+   	email: dev@gmail.com
+	- name: trainer1
+ 	  email: dev@gmail.com
+time:
+	- day: weekday
+	- time: 8PM
+
+
+# mkdir mycomposefiles
+# cd mycomposefiles
+
+# vim docker-compose.yml
+
+volumes:
+  mydata:
+  myvol2:
+services:
+  cont1:
+    image: httpd
+    ports:
+      - 8989:80
+    volumes:
+      - myvol2:/usr/local/apache2/htdocs/
+  cont2:
+    image: nginx
+    ports:
+      - 8888:80
+  cont3:
+    image: tomcat
+    ports:
+      - 8787:8080
+  cont4:
+    image: ubuntu
+    command: sleep infinity
+  db:
+    image: mysql:5.6
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mydata:/var/lib/mysql
+
+
+# docker-compose up -d
+
+# docker-compose ps -a
+
+# docker-compose down
