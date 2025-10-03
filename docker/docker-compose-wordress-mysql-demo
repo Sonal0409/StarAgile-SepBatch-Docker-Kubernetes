@@ -1,0 +1,67 @@
+Install docker-compose tool:
+*******************************************
+
+curl -SL https://github.com/docker/compose/releases/download/v2.13.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+
+docker-compose --version
+
+
+Demo for docker-compose:
+
+# mkdir mycomposefiles
+# cd mycomposefiles
+
+# vim docker-compose.yml
+
+version: '3'
+
+services:
+ db:
+  image: mysql:5.7
+  networks:
+   - wpsite
+  volumes:
+   - db_data:/var/lib/mysql
+  environment:
+   MYSQL_ROOT_PASSWORD: password
+   MYSQL_DATABASE: wordpress
+   MYSQL_USER: wordpress
+   MYSQL_PASSWORD: wordpress
+ wp:
+  image: wordpress
+  depends_on:
+   - db
+  networks:
+   - wpsite
+  ports:
+   - '8089:80'
+  environment:
+   WORDPRESS_DB_HOST: db:3306
+   WORDPRESS_DB_USER: wordpress
+   WORDPRESS_DB_PASSWORD: wordpress
+   WORDPRESS_DB_NAME: wordpress
+
+networks:
+ wpsite:
+volumes:
+ db_data:
+
+
+Save the file and run the compose tool
+
+# docker-compose up -d
+
+# docker-compose ps
+
+Go to browser and check the wp installation
+
+# publicIp:8089
+
+To stop and delete docker-compose service:
+
+# docker-compose down
+
+
+=======================================
