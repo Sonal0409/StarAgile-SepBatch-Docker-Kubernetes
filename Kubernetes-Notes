@@ -1,0 +1,312 @@
+Steps on MASTER NODE:
+============================================
+# sudo su -
+
+## Install Containerd
+
+sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/scripts/installContainerd.sh -P /tmp
+sudo bash /tmp/installContainerd.sh
+sudo systemctl restart containerd.service
+
+
+### Install kubeadm,kubelet,kubectl
+
+You will install these packages on all of your machines:
+kubeadm: the command to bootstrap the cluster.
+kubelet: the component that runs on all of the machines in your cluster and does things like starting pods and containers.
+kubectl: the command line util to talk to your cluster.
+
+
+sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/scripts/installK8S.sh -P /tmp
+
+sudo bash /tmp/installK8S.sh
+
+## Initialize kubernetes Master Node
+
+   # sudo kubeadm init --ignore-preflight-errors=all
+
+Execute the below commands to setup kubectl and apiserver communication
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+   ## install networking driver -- Weave/flannel/canal/calico etc...
+
+   ## below installs calico networking driver
+
+   kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml
+
+   # Validate:  kubectl get nodes
+
+
+Just for your information:
+
+
+
+=========================================
+
+
+
+Steps on  worker Nodes:
+=====================================
+Create an Ubuntu server:
+ instance type t2.medium(AWS), e2 medium(GCP)
+OS : ubuntu 22 (AWS & GCP)
+
+
+
+
+
+
+
+
+
+
+
+
+
+On All Worker Nodes
+
+
+## Install Containerd
+# sudo su -
+sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/scripts/installContainerd.sh -P /tmp
+sudo bash /tmp/installContainerd.sh
+sudo systemctl restart containerd.service
+
+## Install kubeadm,kubelet,kubectl
+
+sudo wget https://raw.githubusercontent.com/lerndevops/labs/master/scripts/installK8S.sh -P /tmp
+sudo bash /tmp/installK8S.sh
+
+## Run Below on Master Node to get join token
+
+#  kubeadm token create --print-join-command
+
+    copy the kubeadm join token from master & run it on all worker nodes
+
+On Master node:
+
+# kubectl get nodes
+==================================
+
+Kubernetes APIVERSION document: 
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#-strong-api-groups-strong-
+
+
+
+In k8s the pods will always be scheduled on the worker node
+In kubernetes we write the code to create Pod using a single line command or using a manifest file.
+
+# kubectl run pod1 --image nginx
+
+# kubectl get pods
+
+# kubectl get pods -o wide
+
+# kubectl describe pod pod1 | less
+
+# kubectl delete pod pod1
+
+Press q to come out of the above command.
+
+
+===========================================
+Kubernetes Objects - POD
+=========================================
+
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#-strong-api-groups-strong-
+
+
+FIELDS:
+  apiVersion    <string>
+    APIVersion defines the versioned schema of this representation of an object.
+    Servers should convert recognized schemas to the latest internal value, and
+    may reject unrecognized values. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+
+  kind  <string>
+    Kind is a string value representing the REST resource this object
+    represents. Servers may infer this from the endpoint the client submits
+    requests to. Cannot be updated. In CamelCase. More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+metadata      <ObjectMeta>
+    If the Labels of a ReplicaSet are empty, they are defaulted to be the same
+    as the Pod(s) that the ReplicaSet manages. Standard object's metadata. More
+    info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+
+  spec  <ReplicaSetSpec>
+    Spec defines the specification of the desired behavior of the ReplicaSet.
+    More info:
+    https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+
+
+
+Multi Container Pod
+====================
+
+# mkdir mykubefiles
+
+# cd mykubefiles
+
+# vim pod-defintion.yml
+
+kind: Pod
+apiVersion: v1
+metadata:
+ name: pod2
+ labels: # any key and value pair
+  author: sonal
+  type: webserver
+  env: dev
+spec:
+ containers:
+  - name: c1
+    image: nginx
+  - name: c2
+    image: tomcat
+  - name: c3
+    image: ubuntu
+    command: ["bash", "-c", "sleep 6000"]
+
+
+
+# kubectl create -f pod-defintion.yml
+
+# kubectl get pods
+
+# kubectl logs pod2 -c c1
+
+Get number of containers in a pod:
+
+# kubectl get pods pod2 -o jsonpath='{.spec.containers[*].name}'
+
+# kubectl delete pod pod2
+
+
+
+ Minikube - Installation of Kubernetes 
+============================================
+#  sudo apt update && sudo apt upgrade -y
+
+#  sudo apt install -y curl apt-transport-https ca-certificates conntrack
+
+#  sudo apt install -y docker.io
+
+# sudo systemctl enable --now docker
+
+#  sudo usermod -aG docker $USER
+
+#  newgrp docker
+
+# docker ps
+
+Install kubectl
+
+# curl -LO "https://dl.k8s.io/release/v1.31.1/bin/linux/amd64/kubectl"
+
+# chmod +x kubectl
+# sudo mv kubectl /usr/local/bin/
+
+# kubectl version --client
+
+Install minikube
+
+# curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+# sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# minikube version
+
+# sudo minikube start --driver=docker --force
+
+
+After practice stop and delete minikube using below commands
+
+minikube stop
+minikube delete
+
+
+Deployment:
+====================================
+
+# vim deployment.yml
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kubeserve
+spec:
+  replicas: 3
+  minReadySeconds: 10 # wait for 45 sec before going to deploy next pod
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  
+      maxSurge: 1        # max number of pods to run for the deployment
+  selector:
+    matchLabels:
+      app: kubeserve
+  template:
+    metadata:
+      name: kubeserve
+      labels:
+        app: kubeserve
+    spec:
+      containers:
+       - name: app
+         image: leaddevops/kubeserve:v1
+       
+# kubectl create -f deployment.yml 
+# kubectl get deployment
+# kubectl get all
+# kubectl scale deployment kubeserve --replicas=5
+# kubectl get pods
+# kubectl scale deployment kubeserve --replicas=2
+Change the Image
+# kubectl set image deployment kubeserve app=leaddevops/kubeserve:v2
+# kubectl rollout status
+# kubectl set image deployment kubeserve app=leaddevops/kubeserve:v3
+# kubectl rollout status deployment kubeserve
+V3 is faulty.. so rollback to previous version
+# kubectl rollout undo deployment kubeserve
+
+
+Service
+Node Port
+=============================================
+Using this we can access the pod from outside the cluster i.e. from our browser.
+
+By default:
+ We cannot access pod ipaddress outside the cluster
+ We cannot access the ClusterIP address outside the cluster
+
+So we have to expose the cluster to the outside world.
+
+For this we will create a Service of type NodePort.
+
+A node port is  a new port mapping which is done to the service port
+
+The node port range is 30000 to 32767
+
+Nodeport will be a port number that will be open on every node of the cluster.
+
+apiVersion: v1
+kind: Service
+metadata: 
+ name: mysvc1 
+spec:
+ type: NodePort
+ selector:
+  app: webserver  
+ ports:
+ - targetPort: 80  
+   port: 80  
+
+
