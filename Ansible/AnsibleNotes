@@ -1,0 +1,212 @@
+Configuration Management with Ansible:
+====================================
+
+Configuration:
+
+Making changes to your environment like:
+ - creating files, directories
+ - copying files form system to other 
+ - creation of users and giving permissions to them
+ - Installation/upgrade/uninstallation of packages
+ - Deploying of applications
+ - creating Db, tables
+
+In an organization there can be many environment (set of VMs) like dev, Qa, prod
+
+Configuration changes can be done manually or automatically - Configuration Management
+
+If we have to do changes on all environments manually :
+	- time consuming
+	- repetitive
+	- Boring
+	- prone human errors
+	- effort and expensive
+
+When working in DevOps we want to deliver/deploy an application at a faster rate 
+When working in DevOps we have to avoid any manual task
+When working in DevOps Configuration management on the servers should also be automated
+This can be automated using CM tools 
+- Ansible
+- puppet
+- chef
+- saltstack
+
+Ansible:
+===================
+
+Ansible is a CM tool
+It is an open source tool
+It works on push approach-> ansible pushes the configuration changes on the worker machines
+Ansible is product of RedHat, now its taken over by IBM
+Ansible will always be installed on a Linux machine
+Ansible will connect to Linux/windows machine for doing configuration changes
+Ansible is very easy to learn tool
+Ansible has 2 parts: Ansible Core and Ansible tower
+Ansible Core : it is the command line tool where we run ansible commands
+Ansible tower: it is the GUI of ansible -> it is available with ansible enterprise version, however a trial version is available for use
+We will be learning Ansible Core
+Ansible code is written in YAML - and the file is called as playbook
+
+Ansible Components:
+====================
+
+1. Inventory: WHERE TO DO THE CONFIGURATION CHANGES
+====================
+- it is a simple text file
+- it is present by default in the directory /etc/ansible
+- Name of the file by default is hosts
+- you can give any other name to the file
+- In this file we will write Ip address or hostnames of the servers that ansible has to connect to do changes
+
+2. MODULES: What CHANGES TO DO
+===========================
+Modules are small python programs pre-written and provided to you by Ansible
+There are 4000+ modules
+for any configuration tasks that we want to automate, ansible gives a modules 
+To this module you give some input values
+The module is executed on the worker machine and the required configuration changes are present on worker machine
+Each module will do a specific task based on the input values that you provide
+
+Example:
+==================
+
+command module: this module will execute any command on your worker machine
+
+ansible --> command(echo "hello All") => 
+
+copy module -. the module has the logic to copy files form source to destination
+
+ansible --> copy(src/file, dest/file)
+
+
+
+java:
+
+method:
+
+add(a,b)
+{
+   result = a+b;
+   return(result);
+
+}
+
+
+file.java
+{
+
+method.add(100,20)  ==> 120
+
+
+}
+
+3. Playbooks:
+==========================
+
+Anisble code is written in playbooks
+Playbook are written in YAML
+A playbook consists of 2 things:
+
+hosts:  
+  workers machine that we have to connect, these worker machine IP address should be in inventory file
+tasks:
+   modules to be executed on the worker machine 
+
+
+When the playbook is executed 
+playbook --> is converted to a python program --> this python file is copied using SSH on the desired worker machine
+This python code is then executed by ansible on the worker machine -->
+After python file has been executed , it is deleted from the worker machine
+All the details can be seen on the ansible controller machine.
+
+4. ansible.cfg
+
+This is ansible configuration file
+The name of the file will always be ansible.cfg
+The file is present by default in /etc/ansible
+You can create the file in any location
+In this file we have complete details about ansible
+- location of modules
+- location on inventory
+- user details
+- forks
+- ansible plugin details
+
+
+Ansible Installation:
+=====================
+
+# sudo su -
+$ sudo apt update
+$ sudo apt install software-properties-common
+$ sudo add-apt-repository --yes --update ppa:ansible/ansible
+$ sudo apt install ansible
+
+On the MAster node -> generate the SSH keys
+# ssh-keygen
+
+Copy the public ssh key
+
+# cat /root/.ssh/id_rsa.pub
+
+
+GO TO the worker NODE now
+
+# sudo su -
+
+# echo "<your public key>" >> authorized_keys 
+
+Now go back to Master and update the inventory file
+
+# cd /etc/ansible
+
+# vim hosts
+
+
+[webserver]
+<privateIp of worker>
+
+
+save the file
+
+run ansible adhoc commands
+
+# ansible weberver -m ping
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Demo:
+====================
+Ansible code is written in 2 ways:
+
+1. Ansible Ad hoc command
+
+single line command
+only 1 module will be executed
+only 1 task will be performed on worker
+it should be used when we want to quickly check something on the worker node
+
+Syntax :
+===========
+
+ansible [hostgroup] -m [modulename] -a [argument/input]
+
+ansible webserver -m 
+
+
+2. Ansible playbook
