@@ -206,7 +206,126 @@ Syntax :
 
 ansible [hostgroup] -m [modulename] -a [argument/input]
 
-ansible webserver -m 
+===============================================================
+Playbook:
+
+# vim playbook1.yml
+
+---
+- name: A playbook to print a message
+  hosts: webserver
+  tasks:
+  - name: Print a message
+    debug: msg="Hello from Ansible Controller"
+  - name: Execute a command
+    command: hostname -s
 
 
-2. Ansible playbook
+# ansible-playbook playbook1.yml
+
+# vim playbook2.yml
+
+---
+- name: Store the output of a task and print the output
+  hosts: webserver
+  tasks:
+  - name: Exeucte a command
+    command: hostname -s
+    register: output_command   # it is a variable registering the output of command module
+  - name: Print the variable value
+    debug: var=output_command
+
+# ansible-playbook playbook2.yml
+
+
+# vim playbook3.yml
+
+---
+- name: Install packages on worker
+  hosts: webserver
+  tasks:
+  - name: Update apt repo
+    command: apt-get update
+  - name: Install apache2 package
+    package: name=apache2 state=present
+  - name: Start apache2 service
+    service: name=apache2 state=started
+
+# ansible-playbook playbook3.yml
+
+ # vim playbook4.yml
+
+---
+- name: Install multiple packages
+  hosts: webserver
+  tasks:
+  - name: Install mutliple package
+    package: name={{ item }}  state=present
+    loop:
+     - php
+     - nano
+     - git
+     - docker.io
+     - maven
+
+# ansible-playbook playbook4.yml
+
+
+# vim htmldeployment.yml
+
+---
+- name: Deploy HTML code on Apche2 server
+  hosts: webserver
+  tasks:
+  - name: Print the start of deployment
+    debug: msg="Deployment started..."
+  - name: Install package
+    package: name=apache2 state=present
+  - name: Check apache is installed or not
+    command: apache2 -v
+    register: output_var
+  - name: Print the version of apache2
+    debug: var=output_var
+  - name: Copy HTML code on apache2 server
+    copy: src=index.html dest=/var/www/html
+  - name: Print status of code file
+    debug: msg="index.html file copied successfully .."
+  - name: Restart apache2
+    service: name=apache2 state=restarted
+  - name: Status of Deployment
+    debug: msg="Deployment completed .."
+
+
+# vim index.html
+
+index.html
+
+<h1> This code file is from Ansible Contorller </h1>
+<h2> This file is created by Sonal </h2>
+<h2> We are learning Ansible as configuration mamanagement tool </h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
