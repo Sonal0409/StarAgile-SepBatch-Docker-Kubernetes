@@ -1,0 +1,164 @@
+
+	
+PHP Project 
+Git hub: https://github.com/akshu20791/php-project
+Prerquisite:
+You need to have your own github account
+Process:
+
+
+1.	Login to your github account
+Open the link : https://github.com/akshu20791/php-project
+
+(in my case this button is not visible because I cannot fork to my own repo)
+After you fork it ..lets suppose if your github username is sumanthlearner
+Then your github link will become like https://github.com/sumanthlearner/php-project
+(which means the project would be copied from akshu20791 github to your github accont)
+
+….> Click on Jenkinsfile
+
+
+First of all replace the github url in Jenkins file with your github url 
+
+Now in your browser if you don’t have dockerhub id create dockerhuub id from https://hub.docker.com/
+(ensure that you don’t login directly via gmail or github …fill the form to create dockerhub account) 
+
+
+In jenkinsfile, replace akshu20791 with your dockerhub username
+
+Open aws account -> ec2 -> create 2 ubuntu machine with all traffic enabled
+
+
+Click on instances -> launch instance
+
+Create new keypair
+Givename and click on create keypair
+
+
+Change type ssh to anywhere
+
+Now you can rename the machine as master-docker and node machine
+
+
+Select the node 
+Copy the private ip 
+
+Now go back to jenkinsfile in github 
+
+
+Click on commit to commit the changes you made in jenkinsfile
+
+
+#########################
+
+
+
+Go to the master machine  and we will install Jenkins and docker in the master machine
+Connecting the machine:
+
+
+Lets now install Jenkins (follow the way I am doing no changes)
+
+sudo su
+wget https://raw.githubusercontent.com/akshu20791/Deployment-script/main/jenkins.sh
+ls
+chmod 700 jenkins.sh
+./jenkins.sh
+
+
+At the a pass will come
+
+
+Now copy the public ip of the master machine and open it on port 8080
+
+Copy paste the pass which u generated above in administrator pass
+
+Click on continue after pasting the pass
+Install suggested plugins
+In username passs ….everywhere put admin …in mail put admin@gmail.com
+
+
+Save and continue
+Save and finish
+Start using Jenkins
+
+Go to manage Jenkins -> credentials -> click on global
+
+
+Add credentials button
+First we will create dockerhub username and pass creds so that my Jenkins and login and push the image to dockerhub
+
+
+We will create credentials for ssh connection also
+
+Add credemtials
+
+
+Now check downloads and open the keypair which u created while creating the node ec2 machine..in notepad and copy the whole key
+
+### now we will create pipeline
+
+Go to Jenkins dashboard
+
++new item
+
+Ok
+Save
+
+	########go back to your master machine #########
+
+apt install docker.io -y
+
+service docker start
+
+Now we will give the access to jenkisn user to access docker user
+
+sudo usermod -aG docker jenkins
+
+service jenkins restart
+################################################
+
+
+Get into the node
+
+sudo su
+apt update -y
+apt install docker.io -y
+service docker start
+
+
+go to Jenkins and refresh the browser
+Relogin
+Go to Jenkins dashboard
+Go to manage Jenkins -> plugins -> available plugins
+Search for docker 
+
+
+Now again click on available plugin
+
+Search ssh 
+Install ssh agent plugin
+
+Click on install
+
+Go back to dashboard
+
+Click on project
+And build the project
+
+
+
+Go to aws …copy the node public ip address ….
+<publicipofmachinewheredeploymenthappened>:8083
+
+App is running 
+
+
+
+
+
+
+
+
+
+
