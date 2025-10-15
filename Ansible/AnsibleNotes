@@ -305,6 +305,295 @@ index.html
 <h2> We are learning Ansible as configuration mamanagement tool </h2>
 
 
+=================================================
+Roles:
+
+# mkdir roles
+
+# cd roles
+
+# ansible-galaxy init apache-project
+
+# ls
+
+# vim tasks/main.yml
+
+  - name: Install the package {{pkg_name}}
+    package: name={{pkg_name}} state=present
+  - name: Start {{pkg_name}} service
+    service: name={{pkg_name}} state=started
+  - name: Deploy index.html file
+    copy: src=index.html dest={{dest_path}}
+    notify: Restart {{pkg_name}} service
+
+
+Save the file
+
+# vim vars/main.yml
+
+pkg_name: apache2
+dest_path: /var/www/html
+http_port: 80
+document_root: /var/www/html
+
+Save the file
+
+
+# vim handlers/main.yml
+
+
+- name: Restart {{pkg_name}} service
+  service: name={{pkg_name}} state=restarted
+
+Save the file
+
+# vim files/index.html
+
+<marquee> LOOK MY PROJECT EXECUTED SUCCESSFULLY </marquee>
+<h1> This is project 1 for the course </h1>
+<h1> Created by Sonal Mittal </h1>
+
+
+
+Save the file
+
+
+# cd
+
+# vim playbook-roles-Project.yml
+
+- name: Project 1 of the course
+  hosts: webserver
+  become: true
+  roles:
+  - apache-Project
+
+
+
+Run the playbook and see the application deployment
+
+For your reference:
+
+NGINX deployment: CEP1
+====================
+
+playbookNginx.yml
+
+- name: Deploy on nginx
+  hosts: webserver
+  become: true
+  vars:
+   http_port: 80
+   document_root: /var/www/html
+  tasks:
+  - name: Install nginx
+    package: name=nginx state=present
+  - name: Start Nginx
+    service: name=nginx state=started
+  - name: update nginx conf
+    template: src=default.j2 dest=/etc/nginx/sites-available/default
+    notify: Restart nginx service
+  - name: Copy the index.html file
+    copy: src=index.html dest=/var/www/html
+  handlers:
+  - name: Restart nginx service
+    service: name=nginx state=restarted
+
+
+# vim index.html
+
+<h1> Nginx deployment </h1>
+
+
+===============================================
+
+> Ansible Dynamic Inventory
+
+By default in ansible we have a hosts file where we write the list of Ip address of the hosts servers where we have to do the changes.
+This file is static where the ip address are fixed, user will manually add new ips or remove Ipaddress that are not required.
+
+But consider a use case where your infrastructure on the cloud and the number of servers are scaling up or scaling down dynamically.
+
+Since the inventory on AWS is dynamic, we cannot hard code the inventory/hosts file on Ansible controller. That will not be correct approach
+
+What is the solution then?
+
+We will take help of Ansible where
+Ansible will connect to AWS securely
+We will use an ansible plugin that will check number of VMs in the desired region on AWS and fetch the ip address or hostnames on the ansible controller machine.
+Once ansible collects the ipaddress of the VMs on the cloud it will automatically compute an Inventory file for the user
+We will use a command to generate this inventory file
+Whenever the command is run  Ansible → connect to AWS→ go to desired region → collects IP of available VMs→ displays the inventory file on the controller
+Now whenever the user will run the playbook, ansible will use the dynamic inventory and execute the changes on the dynamic VMs
+
+Steps for 1 st part:
+===================================
+First Prepare Ansible Controller to install packages that required to connect to AWS
+Install the ansible Cloud plugin and update its details in ansible.cfg file
+Create a new inventory file ->The name of the inventory file should always end with aws_ec2.yml
+
+Steps of Part 2:
+
+1. Create credentials on AWS, so ansible can connect to AWS
+2. Create some Ec2 Vms on AWS of which ansible will fetch the inventory details.
+
+Steps of Part3:
+
+Ansible Controller connects to those EC2 servers using SSH
+Ansible controller executes playbook on the server
+
+
+Note:
+
+The SDK is composed of two key Python packages: Botocore (the library providing the low-level functionality shared between the Python SDK and the AWS CLI) and Boto3 (the package implementing the Python SDK itself).
+
+https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html
+
+Execute below steps:
+=============================
+
+Whichever user you are logged in with the same user you will install the packages and run the ansible inventory command
+
+# su - ansiuser
+
+# cd /etc/ansible
+
+Install ansible aws_ec2 plugins
+The plugin is part of the amazon.aws collection
+We will install the desired collection
+
+# ansible-galaxy collection install amazon.aws
+
+In order to install boto3 and botocore we need python3-pip package
+
+# sudo apt install python3-pip
+
+# pip3 install boto3
+
+# pip show boto3
+
+# sudo apt-get update
+
+# sudo apt-get install awscli -y
+
+Update the ansible.cfg file for it to use the aws_ec2 plugin to fetch the inventory
+
+# vim ansible.cfg
+
+[defaults]
+
+
+enable_plugins = aws_ec2
+
+Save the file
+
+Create the aws_ec2 inventory file
+
+# vim aws_ec2.yml
+
+plugin: amazon.aws.aws_ec2
+regions:
+ - us-east-1
+
+
+Save the file
+
+
+
+
+
+Go to AWS  AND pick up the accesskey credentials:
+
+
+
+
+
+
+On the Ansible Controller:
+
+Take the access key and secret key and save it as environment variables on the Lab:
+
+Run these commands
+
+ # export AWS_ACCESS_KEY_ID=
+#export AWS_SECRET_ACCESS_KEY=
+
+Now execute the command to list the inventory:
+
+# ansible-inventory -i /home/ansiuser/aws_ec2.yml --list
+
+
+
+
+
+Create Ec2 instances on AWS 
+
+On the master node run the inventory command:
+
+# ansible-inventory -i /home/ansiuser/aws_ec2.yml --list
+
+
+
+
+Do these steps as Assignment:
+============================================
+
+Connecting Ansible controller to your cloud machine over SSH
+===========================================
+
+
+Run the Ansible command on the dynamic inventory
+
+If we want to create 10 servers, we would not want to execute steps of creating ansiuser, copying ssh keys and updating config file manually on all server
+Solution for this is : 
+Take the created ANsible worker to aws that connected to Ansible controller via ssh
+Convert the node as an AMI
+So all the worker nodes configuration/softwares/OS/user details will be available as AMI
+Now we will create new Vms with our custom AMI -> So all the new instances will have
+  Ansible controller SSH keys
+ Will have ansiuser and config file updates
+
+Assignment/homework steps: 
+=======================================
+Connect to the Lab
+Go to AWS  , recreate the user and accesskey and secret key
+Reset the below variables on the Master node
+export AWS_ACCESS_KEY_ID=
+ export AWS_SECRET_ACCESS_KEY=
+
+Now execute the command to list the inventory:
+
+# ansible-inventory -i aws_ec2.yml --list
+
+Connect to the AWS Ec2 instance and perform the 4 steps for ssh communication
+
+
+On the master node copy the ssh keys on the new ec2 machine
+# ssh-copy-id -i ansiuser@publicipEC2
+# ssh-copy-id -i ansiuser@54.163.18.51
+Now go to AWS and select your EC2 server
+Convert the Ec2 server in to an Image
+
+
+Give the Image name as AnsibleHostImage→ click on create Image
+
+You can see you image by clicking on AMI
+
+
+
+It will take 5 mins to create the AMI
+Once the AMi is available.
+7. We will now create multiple Instance with the new Image itself
+Click on launch Instance → neter the name and selct the AMi that we have created
+
+
+Launch the instance
+8 go to the master node:
+# ansible-inventory -i aws_ec2.yml --list
+# ansible aws_ec2 -i aws_ec2.yml -m ping
+================================================
+
+
 
 
 
