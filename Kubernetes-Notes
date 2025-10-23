@@ -87,6 +87,15 @@ sudo bash /tmp/installK8S.sh
 
     copy the kubeadm join token from master & run it on all worker nodes
 
+TO RENAME MACHINE 
+hostname kube-master
+sudo su -
+
+hostname kube-worker
+sudo su -
+
+
+
 On Master node:
 
 # kubectl get nodes
