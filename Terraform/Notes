@@ -205,4 +205,158 @@ Save the file
 # terraform apply
 
 
-ami-0341d95f75f311023
+---------------------------
+Manage terraform State File:
+=============================
+
+Terraform we do create or update resources -> we will find a terraform state file created or updated automatically
+
+What ever infrastructure that terraform creates it will be recorded in the terraform state file
+In which ever folder we run the terraform command → same folder terraform state file will be present
+
+The terraform state file is created in JSON format storing all parameters of resources created in AWS
+
+The terraform state file is a Private API
+================================
+
+The state file format is a private API that is meant to be used with in Terraform only
+
+We should never manually update the terraform state file, it should be automatically managed by Terraform.
+If we have to do any changes on the terraform state file it is recommended to use terraform state command or terraform import command
+
+It is always better to take back of the terraform state file:
+==========================================
+> if we are using terraform for personal practice or use then we can maintain the state file in our local machine itself.
+
+But if we are using terraform with multiple team members in a real time project then in that case: 
+ > we will have to maintain the state file in a shared storage or location so that each team member 
+ can access the same terraform state file
+
+> But if multiple people try to run terraform command using the same state file, 
+then we will get into errors related to state file locking
+
+> Also when multiple people are using the same state file than we may have more 1 person
+ updating the same infrastructure, so we will get conflicts or our file may have data loss or may be corrupted
+
+> this can be resolved by isolating the environments for each team member and each one of them having their copy of state file
+
+The solution could be:
+==============================
+
+The most common solution is -> to place the file in the version control tool along with the terraform code.
+However this may also lead to major issues:
+
+Manual error -> team members may pull the latest code and state file.. Make changes but may forget to push the changes to the VC tool
+In VC tool when the team members pull the changes there is concept of lock in VC tool..
+ Now both the team members may be running the same state file
+There are chances that we may expose sensitive data via state file in VC tool
+
+Storing State files in VC tool is not the best solution.
+
+So some other solutions could be:
+
+Using terraform built-in support for remote backends
+Remote backends determines how terraform loads and stores the state files
+We have been using this default backend in terraform so far,
+ but that was local backends which has been storing your state file in local disk or directory
+ 
+Terraform remote backends allows us to store the state file in a remote shared store. 
+For example in Amazon S3, Azure storage, GCP storage, terraform cloud
+
+Using the remote backend storage we will be able to resolve:
+
+Manual errors: With remote backend, terraofrm will by itself update the state file on remote storage when ever you run terraform apply command
+So there is no chance of manual errors.
+
+Locking: Most of the remote backend storage supports Locking. When anybodys run terraform apply command,
+ terraform will automatically acquire a lock on the state file, 
+ so now if someone else runs a terraform apply, the user will have to wait as the state file is locked.
+           Here, we can also add a  -local-timeout=10 mins parameter to instruct terraform to wait up to 10 mins for the local to be released and then run the next terraform apply
+
+Secrets: Most of the backends store supports encryption in transit and encryption in the state file
+        Also all the storage on remote also are secure and one should have correct permissions and roles to access the storage
+
+We will use AMazon S3 (Simple storage service) bucket to store out state files remotely.
+The reason being:
+
+We already using this provider in our terraform configuration, so no special set up is needed
+We already know that S3 bucket is designed in such a way that it is 99.999% always available, which means we dont have to worry about data loss or outages
+Its supports encryption so we can easily manage sensitive data
+It supports locking of state file using dynamo DB
+It supports versioning of the state file, so you can always roll back to older versions if something goes down.
+It is inexpensive and available in AWS for free
+=======================================
+
+Demo:
+
+# mkdir statedemo
+# cd statedemo
+
+# vim state-demo.tf
+
+provider "aws" {
+  region = "us-east-1"
+  shared_credentials_files = ["~/.aws/credentials"]
+
+}
+
+resource "aws_s3_bucket" "terraform-state" {
+  bucket = "terraform-s3-bucket-state-file"
+  lifecycle{
+   prevent_destroy = true
+
+}
+}
+
+resource "aws_s3_bucket_versioning" "versioning_example" {
+  bucket = aws_s3_bucket.terraform-state.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
+  bucket = aws_s3_bucket.terraform-state.id
+
+  rule {
+   apply_server_side_encryption_by_default {
+       sse_algorithm     = "AES256"
+
+}
+}
+}
+
+
+resource "aws_s3_bucket_public_access_block" "example" {
+  bucket = aws_s3_bucket.terraform-state.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+
+
+#  terraform init
+# terraform apply
+
+Open the same file and add the backend information
+
+
+terraform {
+  backend "s3" {
+    bucket = "terraform-s3-bucket-state-file"
+    key    = "global/s3/terraform.tfstate"
+    region = "us-east-1"
+    encrypt = true
+  }
+}
+
+
+#  terraform init
+
+Give yes
+
+Go to aws → search for s3 bucket -> you will see your bucket.
+
