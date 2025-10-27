@@ -1,0 +1,223 @@
+Continuous Monitoring:
+
+Overview of continuous monitoring
+ ● Continuous monitoring is a practice in DevOps that involves the continuous collection, analysis, and visualization of system and application metrics to ensure the health, performance, and availability of software systems. 
+● It enables real-time monitoring and proactive detection of issues, allowing for timely remediation and optimization. 
+● Continuous monitoring involves the use of monitoring tools and techniques to collect and analyze data from various sources, including servers, applications, databases, network devices, and other components of the IT infrastructure. 
+● The goal is to gain insights into system behaviour, identify bottlenecks or anomalies, and take necessary actions to maintain system performance and reliability.
+
+Key Components of Continuous Monitoring: 
+
+1. Data Collection: Continuous monitoring relies on the collection of relevant data points and metrics from different sources, including servers, applications, and infrastructure components. This data can be collected through various monitoring agents, APIs, log files, or other data collection mechanisms. 
+
+2. Data Analysis: The collected data is analyzed to identify patterns, trends, and anomalies. Statistical analysis and machine learning algorithms may be applied to detect performance issues, security threats, or potential failures. 
+
+3. Alerting and Notifications: Continuous monitoring systems are configured to generate alerts and notifications when predefined thresholds or conditions are met. This allows for timely intervention and response to critical events or issues.
+
+4. . Visualization and Dashboards: Continuous monitoring tools provide visualization capabilities to present the collected data in a meaningful and easily understandable manner. Dashboards and reports provide real-time insights into system performance, health, and key metrics.
+
+5. Automated Actions: Continuous monitoring is not just about observing and analyzing data but also about taking automated actions based on predefined rules or policies. These actions can include scaling resources, restarting services, triggering alarms, or notifying relevant stakeholders
+
+ Benefits of Continuous Monitoring: 
+
+1. Early detection of issues: Continuous monitoring enables the timely detection of performance
+bottlenecks, security vulnerabilities, and system failures, allowing for immediate remediation actions.
+ 2. Proactive problem resolution: By continuously monitoring system metrics and analyzing trends, teams can proactively identify and address potential problems before they impact end users. 
+3. Improved system performance and reliability: Continuous monitoring helps in optimizing system performance, ensuring optimal resource utilization, and maintaining high availability
+
+4. Enhanced security: Continuous monitoring enables the detection of security threats, unauthorized access attempts, or unusual activities, facilitating a quick response to protect sensitive data and systems. 
+5. Data-driven decision-making: Continuous monitoring provides valuable insights into system behavior and performance trends, enabling informed decision-making for capacity planning, infrastructure optimization, and resource allocation. 
+6. Compliance and regulatory adherence: Continuous monitoring helps organizations meet compliance requirements by monitoring and reporting on key metrics related to security, privacy, and data integrity.
+
+Continuous monitoring tools in DevOps 
+
+There are several popular continuous monitoring tools used in DevOps. Here are some examples: 
+1. Prometheus: Prometheus is an open-source monitoring and alerting toolkit that is widely used in DevOps environments. It provides a flexible and scalable platform for monitoring metrics, collecting time-series data, and generating alerts based on predefined rules.
+ 2. Grafana: Grafana is an open-source data visualization and monitoring tool that works seamlessly with Prometheus and other data sources. It allows you to create interactive dashboards and visualizations to monitor and analyze your metrics in real-time.
+ 3. ELK Stack (Elasticsearch, Logstash, Kibana): The ELK Stack is a popular combination of open-source tools used for log monitoring and analysis. Elasticsearch is a distributed search and analytics engine, Logstash is a data processing pipeline, and Kibana is a data visualization and exploration tool. Together, they provide a powerful solution for monitoring and analyzing logs.
+
+Some of the key attributes that are monitored include: 
+
+1. System Metrics: These include CPU usage, memory utilization, disk space, network traffic, and other system-level metrics. Monitoring these attributes helps identify resource bottlenecks, capacity issues, and potential system failures.
+
+ 2. Application Performance Metrics: This includes metrics related to response time, throughput, latency, error rates, and other performance indicators specific to the application or service being monitored. Monitoring these metrics helps identify performance issues, bottlenecks, and areas for optimization.
+
+ 3. Infrastructure Metrics: This includes metrics related to infrastructure components such as servers, databases, load balancers, and other networking devices. Monitoring infrastructure metrics helps ensure the availability, reliability, and performance of the underlying infrastructure. 
+
+4. Logs and Events: Monitoring logs and events generated by systems and applications provides valuable insights into system behavior, error messages, security events, and other important events. Monitoring logs helps detect anomalies, troubleshoot issues, and ensure compliance with security and regulatory requirements. 
+
+5. Security Metrics: This includes monitoring for security-related events, vulnerabilities, and threats. It involves monitoring network traffic, access logs, system logs, and other security-related metrics to detect and respond to security incidents in real-time. 
+
+6. Business Metrics: Monitoring business metrics allows organizations to track key performance indicators (KPIs) and business goals. These metrics may include user engagement, conversion rates, revenue, customer satisfaction, and other business-specific metrics.
+
+To install and configure Prometheus and Grafana as monitoring and visualization tools, you can follow the steps below:
+
+Create a system user for Prometheus using below commnds:
+sudo useradd --no-create-home --shell /bin/false prometheus
+
+Create the directories in which we will be storing our configuration files and libraries:
+sudo mkdir /etc/prometheus
+sudo mkdir /var/lib/prometheus
+Set the ownership of the /var/lib/prometheus directory with below command:
+sudo chown prometheus:prometheus /var/lib/prometheus
+You need to inside /tmp :
+cd /tmp/
+Go to official pgae downloads Prometheus:
+
+https://prometheus.io/download/#prometheus
+
+# wget https://github.com/prometheus/prometheus/releases/download/v3.5.0/prometheus-3.5.0.linux-amd64.tar.gz
+
+# sudo tar -xvf prometheus-3.5.0.linux-amd64.tar.gz
+Move the configuration file and set the owner to the prometheus
+cd prometheus-3.5.0.linux-amd64
+sudo mv promtool /etc/prometheus
+sudo mv prometheus.yml /etc/prometheus
+sudo chown -R prometheus:prometheus /etc/prometheus
+Move the binaries and set the owner:
+sudo mv prometheus /usr/local/bin/
+sudo chown prometheus:prometheus /usr/local/bin/prometheus
+Create the service file using below command:
+sudo nano /etc/systemd/system/prometheus.service
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+    --config.file /etc/prometheus/prometheus.yml \
+    --storage.tsdb.path /var/lib/prometheus/ \
+    --web.console.templates=/etc/prometheus/consoles \
+    --web.console.libraries=/etc/prometheus/console_libraries
+
+[Install]
+WantedBy=multi-user.target
+
+Reload systemd:
+sudo systemctl daemon-reload
+
+Start and enable Prometheus service:
+sudo systemctl start prometheus
+sudo systemctl enable prometheus
+sudo systemctl status prometheus
+Now access Prometehus in your browser
+<server-ip>:9090
+Step #2:Install Node Exporter on Ubuntu 22.04 LTS
+# wget https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
+# sudo tar xvfz node_exporter-*.*-amd64.tar.gz
+
+Move the binary file of node exporter to /usr/local/bin location.
+sudo mv node_exporter-*.*-amd64/node_exporter /usr/local/bin/
+
+Create a node_exporter user to run the node exporter service
+sudo useradd -rs /bin/false node_exporter
+Create a Custom Node Exporter Service
+sudo nano /etc/systemd/system/node_exporter.service
+[Unit]
+
+Description=Node Exporter
+
+After=network.target
+
+ 
+
+[Service]
+
+User=node_exporter
+
+Group=node_exporter
+
+Type=simple
+
+ExecStart=/usr/local/bin/node_exporter
+
+ 
+
+[Install]
+WantedBy=multi-user.target
+=======================
+Reload the systemd
+sudo systemctl daemon-reload
+
+To Start, enable node exporter:
+sudo systemctl enable node_exporter
+sudo systemctl start node_exporter
+sudo systemctl status node_exporter
+Lets update our configuration file using below command:
+sudo nano /etc/prometheus/prometheus.yml
+- job_name: 'Node_Exporter'
+
+    scrape_interval: 5s
+
+    static_configs:
+
+      - targets: ['<Server_IP_of_Node_Exporter_Machine>:9100']
+After changes any configuration file we need to restart our prometheus
+sudo systemctl restart prometheus.service
+
+Step #3:Install Grafana on Ubuntu 22.04 LTS
+Download the Grafana GPG key with wget, then pipe the output to apt-key. This will add the key to your APT installation’s list of trusted keys, which will allow you to download and verify the GPG-signed Grafana package:
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+Next, add the Grafana repository to your APT sources:
+sudo add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+Refresh your APT cache to update your package lists:
+sudo apt update
+You can now proceed with the installation:
+sudo apt install grafana
+Once Grafana is installed, use systemctl to start the Grafana server:
+sudo systemctl start grafana-server
+Next, verify that Grafana is running by checking the service’s status:
+sudo systemctl status grafana-server
+sudo systemctl enable grafana-server
+Lets Access in browser:
+<instance_ip>:3000
+Output:
+default username: admin
+default password: admin
+Click Add data source and select Prometheus
+For the URL, enter http://localhost:9090 and click Save and test. You can see Data source is working.
+Click on Save and Test.
+Let’s add Dashboard for a better view in Grafana
+Click On Dashboard → + symbol → Import Dashboard
+Click on Import Dashboard paste this code 1860 and click on load
+
+Step #4:Install Jenkins on Ubuntu 22.04 LTS
+Installation of Java:
+sudo apt update
+sudo apt install fontconfig openjdk-17-jre
+java -version
+Install Jenkins from official website
+Setup dashboard → install prometheus plugin -> restart Jenkins
+To create a static target, you need to add job_name with static_configs
+sudo vim /etc/prometheus/prometheus.yml
+
+Paste below code
+- job_name: 'jenkins'
+   metrics_path: '/prometheus'
+   static_configs:
+     - targets: ['<jenkins-ip>:8080']
+After changes in config file we need to restart prometheus
+sudo systemctl restart prometheus
+Check the targets section
+http://<ip>:9090/targets
+=============
+Let’s add Dashboard for a better view in Grafana
+Click On Dashboard → + symbol → Import Dashboard
+Use Id 9964 and click on load
+
+
+
+
+
+
+
+
+
+
+
+
+
