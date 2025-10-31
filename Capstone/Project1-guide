@@ -1,0 +1,195 @@
+
+VPC  - 2 availability zones
+Subnets
+2 public 4 private
+Rename them for each layer
+Secutiry group 
+SG1: external load balancer port -> http --> 80--> anywhere 
+SG2: web app--> http -->80 -->connect ELB SG
+SG3: internalLB --> http --> 80--> custom --> 192.168.0.0
+SG4: app layer --> http --> 4000 --> custom --> 192.168.0.0
+SG5: DB -> mysql/aurora -->3306 --> custom --> 192.168.0.0
+
+Upload the code to a S3 bucket 
+--> clone to the repo to your windows machine
+
+Create a S3 bucket on the aws 
+upload the folder form window machine 
+
+Create an IAM role forpermissions AmazonEC2RoleforSSM
+
+Create the DB -> select mysql --> select fre tier --> select custom VPC -->set passowrd 
+
+Now create an Ec2 instance - amazon linux 2023 -> select custom VPC, select custom public subets 
+select the security groups--> select the IAM role --> create EC2--> install will be in provtae netowrk
+Connect using session manager 
+====================
+On the Ec2 server
+
+In this instance we will do the App Server Setup and DB Server Configuration.
+ Execute the below commands;
+Install MySQL
+
+sudo yum install mysql -y
+
+Configure MySQL Database
+
+Connect to the database and perform basic configuration: Replace below info with your DB information
+mysql -h <DB EndPoint> -u admin -p ----> Enter the Password i.e (this is DB password). If you couldn't connect, there is a problem with the SG of the DB.
+
+Ex: mysql -h database-1.c380a08uukyc.ap-south-1.rds.amazonaws.com -u admin -p
+
+Lets create a database. The database name i'm creating is "webappdb" (This is same name that you should give in DvConfig.js file);
+
+CREATE DATABASE webappdb;
+
+SHOW DATABASES;
+
+USE webappdb; ----> You will see 'Database changed'
+
+Execute the below code as a single code. Here we are creating a table with the name 'transactions'
+CREATE TABLE IF NOT EXISTS transactions(
+  id INT NOT NULL AUTO_INCREMENT, 
+  amount DECIMAL(10,2), 
+  description VARCHAR(100), 
+  PRIMARY KEY(id)
+);
+
+To verify whether table got created or not;
+SHOW TABLES;
+
+Lets insert some info into the table
+INSERT INTO transactions (amount, description) VALUES ('400', 'groceries');
+
+To verify whether the entry is really created or not
+SELECT * FROM transactions;
+You will see the info you have written
+
+To come out of the DB;
+exit (You will see 'ec2-user' at the end of command line and at the beginning of command line you will see 'root')
+
+Update Application Configuration to with DB information
+
+Go to windows machine --> go to folder--> application-code/app-tier/DbConfig.js
+
+In this file update the correct DB endpoint , username and passowrd 
+
+module.exports = Object.freeze({
+    DB_HOST : 'database-1.c380a08uukyc.ap-south-1.rds.amazonaws.com',
+    DB_USER : 'admin',
+    DB_PWD : 'kastro2025',
+    DB_DATABASE : 'webappdb'
+});
+
+Install and Configure Node.js and PM2
+curl -o- https://raw.githubusercontent.com/avizway1/aws_3tier_architecture/main/install.sh | bash
+source ~/.bashrc
+
+nvm install 16
+nvm use 16 (You will see 'Now using node v16.20.2)
+
+NVM means Node Version Manager
+ 
+To run node as a service, we will install pm2
+npm install -g pm2 (You will see 'found 0 vulnerabilities)
+
+Download application code from S3 and start the application
+cd ~/ 
+sudo aws s3 cp s3://<S3BucketName>/application-code/app-tier/ app-tier --recursive
+
+Ex: sudo aws s3 cp s3://demo-3tier-project/application-code/app-tier/ app-tier --recursive
+
+ls ---> You will see 'app-tier' folder
+
+cd app-tier/ 
+npm install
+ls ----> You will see 'index.js' file. We have to start that.
+
+pm2 start index.js (You will see the status as 'online')
+
+To verify;
+pm2 list (or) pm2 status
+pm2 logs (You will not see anything in red colour, everything in white colour you should see)
+
+At the end you will see something like; http://localhost:4000
+
+pm2 startup
+pm2 save ---> To save the configuration	
+
+Verify that the application is running by executing
+curl http://localhost:4000/health
+It should return: This is the health check.
+
+With this we have completed the application configuration.
+
+4.2. Creation of Internal Load Balancer for App Tier
+
+Goto the downloaded code folder in local system ----> Open nginx.conf file and in the end of the file you will see something like below;
+        #proxy for internal lb
+        location /api/{
+                proxy_pass http://[REPLACE-WITH-INTERNAL-LB-DNS]:80/;
+        }
+
+Replace the LB DNS in the above
+
+Upload the updated nginx.conf file to the S3 bucket
+
+This one we are going to copy to the webserver in sometime.
+ 
+~~~~~~~~~~~
+Step 5
+~~~~~~~~~~~
+Creation of Web tier resources including External Load Balancer
+
+sudo -su ec2-user (To work as an ec2-user)    
+
+cd /home/ec2-user
+
+curl -o- https://raw.githubusercontent.com/avizway1/aws_3tier_architecture/main/install.sh | bash
+source ~/.bashrc
+nvm install 16
+nvm use 16
+
+aws s3 cp s3://<S3 Bucker Name>/application-code/web-tier/ web-tier --recursive
+Ex: aws s3 cp s3://demo-3tier-project/application-code/web-tier/ web-tier --recursive
+
+ls ----> You will see 'web-tier'
+
+cd web-tier
+npm install
+npm run build
+
+sudo amazon-linux-extras install nginx1 -y
+
+Update Nginx configuration:
+cd /etc/nginx (Your are in nginx path)
+ls ----> You will see 'nginx.conf' file
+
+sudo rm nginx.conf
+sudo aws s3 cp s3://<S3 Bucker Name>/application-code/nginx.conf .
+Ex: sudo aws s3 cp s3://demo-3tier-project/application-code/nginx.conf .
+sudo service nginx restart
+
+chmod -R 755 /home/ec2-user
+
+sudo chkconfig nginx on
+
+To check the output of the App, we can check using the Web-Tier-Instance public IP. But before checking lets open port no 80 with http, Anywhere IPv4, 0.0.0.0/0 ---> Save rules ----> Now paste the pubic ip of Web-Tier-Instance in new tab of browser ----> You will see the app ----> Enter the data in the app
+
+
+This is about 3 tier architecture with HA and Fault Tolerance.
+
+
+Delete everything once its done
+First delete ASG
+Next delete both LBs
+Next delete both TGs
+Next delete both AMIs
+Next delete both Snapshots of AMIs
+Next delete DB
+Next delete S3 Bucket
+Next delete Certificate
+Next delete Route 53 record
+Next delete NAT GW
+Next delete Elastic IP. This came because of NATGW
+Next delete VPC
