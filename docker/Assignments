@@ -1,0 +1,146 @@
+1. L1 - Create Dockerfile and build the docker 
+container Application Image for the application 
+build in Jenkins Module 
+
+Before executing the pipleine give jenkins permsision to run docker commands
+
+ #  chmod 777 /var/run/docker.sock
+
+Create the following pipeline in jenkins
+
+pipeline{
+    tools{
+        maven 'mymaven'
+    }
+    agent any
+    stages{
+        stage('clone repo'){
+            steps{
+                git 'https://github.com/Sonal0409/DevOpsCodeDemo.git'
+            }
+        }
+        stage('Build Code'){
+            steps{
+                sh 'mvn package'
+            }
+        }
+        
+        
+        stage('build Image'){
+          
+            steps{
+                sh 'docker build -t myaddressbook .'
+            }
+        }
+        
+        stage('Deploy container'){
+            steps{
+                sh 'docker run -d -P myaddressbook'
+            }
+        }
+    }
+}
+
+
+2. L2 - Create the Container using the same 
+Application Image and run the application in a 
+Web Browser using container port mapping 
+
+go to the same ec2 instance
+on the terminal run the below command 
+
+#  docker run -d -P myaddressbook
+
+# docker ps -a  
+
+you will see container information 
+you will see 5 digit port number in the same line 
+
+go to browser 
+take  publicipaddress:<5 digit portnumber>/addressbook
+
+
+3. L3 - Demonstrate Docker Compose using the 
+Application Image and MySQL Image to start and 
+stop all container services
+
+
+Install docker-compose tool:
+*******************************************
+
+curl -SL https://github.com/docker/compose/releases/download/v2.13.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+
+docker-compose --version
+
+# mkdir mycomposefiles
+# cd mycomposefiles
+
+# vim docker-compose.yml
+
+version: '3'
+
+services:
+ db:
+  image: mysql:5.7
+  networks:
+   - wpsite
+  volumes:
+   - db_data:/var/lib/mysql
+  environment:
+   MYSQL_ROOT_PASSWORD: password
+   MYSQL_DATABASE: wordpress
+   MYSQL_USER: wordpress
+   MYSQL_PASSWORD: wordpress
+ wp:
+  image: wordpress
+  depends_on:
+   - db
+  networks:
+   - wpsite
+  ports:
+   - '8089:80'
+  environment:
+   WORDPRESS_DB_HOST: db:3306
+   WORDPRESS_DB_USER: wordpress
+   WORDPRESS_DB_PASSWORD: wordpress
+   WORDPRESS_DB_NAME: wordpress
+
+networks:
+ wpsite:
+volumes:
+ db_data:
+
+
+
+ Save the files
+
+ Save the file and run the compose tool
+
+# docker-compose up -d
+
+# docker-compose ps
+
+Go to browser and check the wp installation
+
+# publicIp:8089
+
+To stop docker-compose service:
+
+# docker-compose stop
+
+To stop and delete docker-compose service:
+
+# docker-compose down
+
+
+
+
+
+
+
+
+
+
+
