@@ -1,0 +1,532 @@
+
+
+************************************
+Step 1: Basic Setup
+************************************
+================================================================
+1.1. Launch 1 VM (Ubuntu, 24.04, t2.large, 28 GB, Name: BMS-Server)
+================================================================
+Open all the ports by selecting all traffic and anywhere under security groups
+=============================
+1.2. Creation of EKS Cluster
+=============================
+Link to create a EKS cluster and worker nodes
+
+https://docs.google.com/document/d/1bU5-c9LCzy0cjVhKUYMt-2IagsWRqw0y/edit
+
+************************************
+Step 2: Tools Installation
+************************************
+=============================
+2.1.1 Connect to the Jenkins Server
+=============================
+
+# Install OpenJDK 17 JRE Headless
+sudo apt install openjdk-17-jre-headless -y
+
+# Run below commands to install Jenkins
+===================
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt update
+sudo apt install jenkins -y
+
+Access Jenkins and setup Jenkins dashboard 
+
+=============================
+2.1.2 Install Docker
+=============================
+Set up Docker's apt repository.
+
+
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+Install the Docker packages.
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+sudo systemctl status docker
+
+sudo systemctl start docker
+=============================
+************************************
+Step 3: Access Jenkins Dashboard
+************************************
+Setup the Jenkins
+
+3.1. Plugins installation
+Install below plugins;
+Eclipse Temurin Installer, NodeJS, Docker, Docker Commons, Docker Pipeline, Docker API, docker-build-step, Pipeline stage view, Kubernetes, Kubernetes CLI, Kubernetes Client API, Kubernetes Credentials, Config File Provider, Prometheus metrics
+
+
+3.3. Creation of Credentials
+
+3.4. Tools Configuration
+
+3.5 System Configuration in Jenkins
+
+-------------------
+Install NPM
+-------------------
+apt install npm
+
+************************************
+Step 5: Create Pipeline Job
+************************************
+Before pasting the pipeline script, do the following changes in the script
+1. In the stage 'Tag and Push to DockerHub', give your docker-hub username. Similar thing you should do in 'Deploy to container' stage.
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+BMS - Script (Without K8S Stage)
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+pipeline {
+    agent any
+    tools {
+        nodejs 'node23'
+    }
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main', url: 'https://github.com/demo1orgtoday/Book-My-Show-Project-Caps.git'
+                sh 'ls -la'  // Verify files after checkout
+            }
+        }
+
+        stage("Install NPM Dependencies") {
+          steps {
+              sh "npm install"
+          }
+      }
+
+        stage('Build docker image')
+        {
+        steps{
+            sh 'docker build --no-cache -t bms -f bookmyshow-app/Dockerfile bookmyshow-app'
+        }
+        }
+        
+        stage('Docker Build & Push') {
+            steps {
+            withCredentials([string(credentialsId: 'DOCKER_HUB_PASWD', variable: 'DOCKER_HUB_PASWD')]) {
+            sh 'docker login -u edu123 -p ${DOCKER_HUB_PASWD}'
+            }
+          
+            sh 'docker tag bms edu123/bms'
+            sh 'docker push edu123/bms'
+                }
+            }
+        }
+        stage('Deploy to Container') {
+            steps {
+          
+              sh  'docker run -d --restart=always -P edu123/bms'
+
+                echo "Checking running containers..."
+             sh 'docker ps -a'
+
+            }
+        }
+    }
+  
+}
+
+Save the page and run below command on terminal 
+
+chmod -R 777 /var/run/docker.sock
+
+Now run the pipelien
+
+Access the BMS App using Public IP of BMS-Server
+
+****************************************************************************************************************************
+											PART II: K8S Deployment & Monitoring
+****************************************************************************************************************************
+Install :
+apt  install awscli -y
+
+Before executing the K8S Stage pipeline;
+
+To know Jenkins is running on which user;
+ps aux | grep jenkins
+
+Look for the user in the output. For example:
+jenkins   1234  0.0  0.1 123456 7890 ?        Ssl  12:34   0:00 /usr/bin/java -jar /usr/share/jenkins/jenkins.war
+In this case, Jenkins is running as the jenkins user.
+
+Switch to the jenkins user
+sudo -su jenkins
+pwd ---- /home/ubuntu
+whoami ---- jenkins
+
+Configure AWS credentials:
+aws configure ---> Configure with access and secret access keys
+This will create the AWS credentials file at "/var/lib/jenkins/.aws/credentials"
+
+Verify the credentials
+aws sts get-caller-identity
+
+If the credentials are valid, you should see output like this:
+{
+    "UserId": "EXAMPLEUSERID",
+    "Account": "123456789012",
+    "Arn": "arn:aws:iam::123456789012:user/example-user"
+}
+
+Comeout of the Jenkins user to Restart Jenkins
+exit
+sudo systemctl restart jenkins
+
+Switch to Jenkins user
+
+sudo -su jenkins
+
+aws eks update-kubeconfig --name cluster-name --region us-east-1
+
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+BMS - Script (With K8S Stage) 
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk17'
+        nodejs 'node23'
+    }
+
+    environment {
+      
+        DOCKER_IMAGE = 'edu123/bms'
+        EKS_CLUSTER_NAME = 'bms-cluster-eks'
+        AWS_REGION = 'us-east-1'
+    }
+
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main', url: 'https://github.com/KastroVKiran/Book-My-Show.git'
+                sh 'ls -la'  // Verify files after checkout
+            }
+        }
+    
+        stage('Build docker image')
+        {
+        steps{
+            sh 'docker build --no-cache -t bms -f bookmyshow-app/Dockerfile bookmyshow-app'
+        }
+        }
+        
+        stage('Docker Build & Push') {
+            steps {
+            withCredentials([string(credentialsId: 'DOCKER_HUB_PASWD', variable: 'DOCKER_HUB_PASWD')]) {
+            sh 'docker login -u edu123 -p ${DOCKER_HUB_PASWD}'
+            }
+          
+            sh 'docker tag bms edu123/bms'
+            sh 'docker push edu123/bms'
+                }
+            }
+        }
+
+        stage('Deploy to EKS Cluster') {
+            steps {
+                script {
+                    sh '''
+                    echo "Verifying AWS credentials..."
+                    aws sts get-caller-identity
+
+                    echo "Configuring kubectl for EKS cluster..."
+                    aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+
+                    echo "Verifying kubeconfig..."
+                    kubectl config view
+
+                    echo "Deploying application to EKS..."
+                    kubectl apply -f deployment.yml
+                    kubectl apply -f service.yml
+
+                    echo "Verifying deployment..."
+                    kubectl get pods
+                    kubectl get svc
+                    '''
+                }
+            }
+        }
+    }
+
+
+}
+
+
+
+************************************
+Step 6: Monitoring the application
+************************************
+Launch Ubuntu VM, 22.04, t2.medium, 
+Name the VM as Monitoring Server
+
+6.1. Connect to the Monitoring Server VM (Execute in Monitoring Server VM)
+Create a dedicated Linux user sometimes called a 'system' account for Prometheus
+sudo apt update
+
+sudo useradd \
+    --system \
+    --no-create-home \
+    --shell /bin/false prometheus
+
+With the above command, we have created a 'Prometheus' user
+
+Explanation of above command
+–system – Will create a system account.
+–no-create-home – We don’t need a home directory for Prometheus or any other system accounts in our case.
+–shell /bin/false – It prevents logging in as a Prometheus user.
+Prometheus – Will create a Prometheus user and a group with the same name.
+
+6.2. Download the Prometheus
+sudo wget https://github.com/prometheus/prometheus/releases/download/v2.47.1/prometheus-2.47.1.linux-amd64.tar.gz
+tar -xvf prometheus-2.47.1.linux-amd64.tar.gz
+sudo mkdir -p /data /etc/prometheus
+cd prometheus-2.47.1.linux-amd64/
+
+Move the Prometheus binary and a promtool to the /usr/local/bin/. promtool is used to check configuration files and Prometheus rules.
+sudo mv prometheus promtool /usr/local/bin/
+
+Move console libraries to the Prometheus configuration directory
+sudo mv consoles/ console_libraries/ /etc/prometheus/
+
+Move the example of the main Prometheus configuration file
+sudo mv prometheus.yml /etc/prometheus/prometheus.yml
+
+Set the correct ownership for the /etc/prometheus/ and data directory
+sudo chown -R prometheus:prometheus /etc/prometheus/ /data/
+
+Delete the archive and a Prometheus tar.gz file 
+cd
+You are in ~ path
+rm -rf prometheus-2.47.1.linux-amd64.tar.gz
+
+prometheus --version
+You will see as "version 2.47.1"
+
+prometheus --help
+
+We’re going to use Systemd, which is a system and service manager for Linux operating systems. For that, we need to create a Systemd unit configuration file.
+sudo vi /etc/systemd/system/prometheus.service ---> Paste the below content ---->
+
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=500
+StartLimitBurst=5
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/data \
+  --web.console.templates=/etc/prometheus/consoles \
+  --web.console.libraries=/etc/prometheus/console_libraries \
+  --web.listen-address=0.0.0.0:9090 \
+  --web.enable-lifecycle
+[Install]
+WantedBy=multi-user.target
+
+ ----> esc ----> :wq ----> 
+
+To automatically start the Prometheus after reboot run the below command
+sudo systemctl enable prometheus
+
+Start the Prometheus
+sudo systemctl start prometheus
+
+Check the status of Prometheus
+sudo systemctl status prometheus
+
+Open Port No. 9090 for Monitoring Server VM and Access Prometheus
+<public-ip:9090>
+
+If it doesn't work, in the web link of browser, remove 's' in 'https'. Keep only 'http' and now you will be able to see.
+You can see the Prometheus console.
+Click on 'Status' dropdown ---> Click on 'Targets' ---> You can see 'Prometheus (1/1 up)' ----> It scrapes itself every 15 seconds by default.
+
+10. Install Node Exporter (Execute in Monitoring Server VM)
+You are in ~ path now
+
+Create a system user for Node Exporter and download Node Exporter:
+sudo useradd --system --no-create-home --shell /bin/false node_exporter
+wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+
+Extract Node Exporter files, move the binary, and clean up:
+tar -xvf node_exporter-1.6.1.linux-amd64.tar.gz
+sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin/
+rm -rf node_exporter*
+
+node_exporter --version
+
+Create a systemd unit configuration file for Node Exporter:
+sudo vi /etc/systemd/system/node_exporter.service
+
+Add the following content to the node_exporter.service file:
+[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/node_exporter --collector.logind
+
+[Install]
+WantedBy=multi-user.target
+
+Note: Replace --collector.logind with any additional flags as needed.
+
+Enable and start Node Exporter:
+sudo systemctl enable node_exporter
+sudo systemctl start node_exporter
+
+Verify the Node Exporter's status:
+sudo systemctl status node_exporter
+You can see "active (running)" in green colour
+Press control+c to come out of the file
+
+6.3. Configure Prometheus Plugin Integration
+
+As of now we created Prometheus service, but we need to add a job in order to fetch the details by node exporter. So for that we need to create 2 jobs, one with 'node exporter' and the other with 'jenkins' as shown below;
+
+Integrate Jenkins with Prometheus to monitor the CI/CD pipeline.
+
+Prometheus Configuration:
+
+To configure Prometheus to scrape metrics from Node Exporter and Jenkins, you need to modify the prometheus.yml file. 
+The path of prometheus.yml is; cd /etc/prometheus/ ----> ls -l ----> You can see the "prometheus.yml" file ----> sudo vi prometheus.yml ----> You will see the content and also there is a default job called "Prometheus" Paste the below content at the end of the file;
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['<MonitoringVMip>:9100']
+
+  - job_name: 'jenkins'
+    metrics_path: '/prometheus'
+    static_configs:
+      - targets: ['<your-jenkins-ip>:<your-jenkins-port>']
+
+
+
+ In the above, replace <your-jenkins-ip> and <your-jenkins-port> with the appropriate IPs ----> esc ----> :wq
+Also replace the public ip of monitorting VM. Dont change 9100. Even though the Monitoring server is running on 9090, dont change 9100 in the above script
+
+Check the validity of the configuration file:
+promtool check config /etc/prometheus/prometheus.yml
+You should see "SUCCESS" when you run the above command, it means every configuration made so far is good.
+
+Reload the Prometheus configuration without restarting:
+curl -X POST http://localhost:9090/-/reload
+
+Access Prometheus in browser (if already opened, just reload the page):
+http://<your-prometheus-ip>:9090/targets
+
+For Node Exporter you will see (0/1) in red colour. To resolve this, open Port number 9100 for Monitoring VM 
+
+You should now see "Jenkins (1/1 up)" "node exporter (1/1 up)" and "prometheus (1/1 up)" in the prometheus browser.
+Click on "showmore" next to "jenkins." You will see a link. Open the link in new tab, to see the metrics that are getting scraped
+
+-------------------------------------------------------------------
+6.4. Install Grafana (Execute in Monitoring Server VM)
+-------------------------------------------------------------------
+You are currently in /etc/Prometheus path.
+
+Install Grafana on Monitoring Server;
+
+Step 1: Install Dependencies:
+First, ensure that all necessary dependencies are installed:
+sudo apt-get update
+sudo apt-get install -y apt-transport-https software-properties-common
+
+Step 2: Add the GPG Key:
+cd ---> You are now in ~ path
+Add the GPG key for Grafana:
+wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+
+You should see OK when executed the above command.
+
+Step 3: Add Grafana Repository:
+Add the repository for Grafana stable releases:
+echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+
+Step 4: Update and Install Grafana:
+Update the package list and install Grafana:
+sudo apt-get update
+sudo apt-get -y install grafana
+
+Step 5: Enable and Start Grafana Service:
+To automatically start Grafana after a reboot, enable the service:
+sudo systemctl enable grafana-server
+
+Start Grafana:
+sudo systemctl start grafana-server
+
+Step 6: Check Grafana Status:
+Verify the status of the Grafana service to ensure it's running correctly:
+sudo systemctl status grafana-server
+
+You should see "Active (running)" in green colour
+Press control+c to come out
+
+Step 7: Access Grafana Web Interface:
+The default port for Grafana is 3000
+http://<monitoring-server-ip>:3000
+
+Default id and password is "admin"
+You can Set new password or you can click on "skip now".
+Click on "skip now" (If you want you can create the password)
+
+You will see the Grafana dashboard
+
+10.2. Adding Data Source in Grafana
+The first thing that we have to do in Grafana is to add the data source
+Add the data source;
+
+
+10.3. Adding Dashboards in Grafana 
+(URL: https://grafana.com/grafana/dashboards/1860-node-exporter-full/) 
+Lets add another dashboard for Jenkins;
+(URL: https://grafana.com/grafana/dashboards/9964-jenkins-performance-and-health-overview/)
+
+Click on Dashboards in the left pane, you can see both the dashboards you have just added.
+
+
+Final:
+Delete all the resources created
