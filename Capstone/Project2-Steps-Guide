@@ -155,10 +155,66 @@ Now run the pipelien
 Access the BMS App using Public IP of BMS-Server
 
 ****************************************************************************************************************************
-											PART II: K8S Deployment & Monitoring
+											PART II: Ansible and K8S Deployment & Monitoring
 ****************************************************************************************************************************
+On the same ec2 machine as above, install Ansible
+
 Install :
 apt  install awscli -y
+
+On Ansible setup environment variables to store aws access key and secret key
+Install awscli 
+install kubectl 
+---
+- name: Configure EKS Connection & Deploy Sample App
+  hosts: localhost # Run on your local machine
+  vars:
+    cluster_name: "my-eks-cluster" # Your EKS cluster name
+    aws_region: "us-east-1"     # Your AWS region
+
+  tasks:
+    - name: Get EKS Cluster Details (Optional, for verification)
+      community.aws.eks_cluster_info:
+        name: "{{ cluster_name }}"
+        region: "{{ aws_region }}"
+      register: eks_cluster_info
+
+    - name: Update kubeconfig for EKS cluster
+      # This command configures kubectl to talk to your EKS cluster
+      command: >
+        aws eks update-kubeconfig --name {{ cluster_name }} --region {{ aws_region }}
+      delegate_to: localhost
+      changed_when: true # This command always makes a change to local kubeconfig
+
+    - name: Verify kubectl context
+      command: kubectl config current-context
+      register: current_context
+      changed_when: false
+
+    - name: Display current context (should be your EKS cluster)
+      debug:
+        var: current_context.stdout
+
+    # --- Now use Kubernetes modules ---
+
+    - name: Create Namespace (if needed)
+      kubernetes.core.k8s:
+        name: my-app-ns
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Deploy Sample Deployment
+      kubernetes.core.k8s:
+        state: present
+        src: "deployment.yaml" # Path to your k8s deployment file
+
+
+
+Run the playbook and check the output
+
+=================================================================
+OPTIONAL:
 
 Before executing the K8S Stage pipeline;
 
